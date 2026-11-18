@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mi Negocio</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f5c4d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mi Negocio">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{--bg:#f3f6f4;--card:#fff;--ink:#14221d;--mute:#5f726a;--line:#dce5e0;--pri:#0f5c4d;--onpri:#fff;--ok:#1b7f4b;--bad:#b3392f;--warn:#a86a00;--soft:#e4f0eb;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -53,7 +60,8 @@ pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:10px;fo
 const KEY='negocio_v2';
 let S={biz:{name:'Mi Negocio',cur:'$'},prods:[],cts:[],tx:[],est:[]};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const save=()=>{persist();if(window.APP&&APP.onSave)APP.onSave()};
 const $=i=>document.getElementById(i);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const m=n=>S.biz.cur+(Math.round((+n||0)*100)/100).toLocaleString('es',{maximumFractionDigits:2});
@@ -88,11 +96,11 @@ const closeM=()=>{MS=null;PREV=null;drawM()};
 function ask(msg,fn){PREV=MS;YES=fn;MS=()=>`<h3>${msg}</h3><div class="btns"><button class="g" data-a="cancel">Cancelar</button><button class="alt" data-a="yes">Aceptar</button></div>`;drawM()}
 
 /* ---------- Render ---------- */
-function render(){
+function render(skipM){
   $('nav').innerHTML=[['inicio','🏠','Inicio'],['movs','🧾','Movimientos'],['prods','📦','Productos'],['ctos','👥','Contactos'],['mas','☰','Más']]
     .map(t=>`<button class="${tab===t[0]?'on':''}" data-a="tab" data-v="${t[0]}"><span>${t[1]}</span>${t[2]}</button>`).join('');
   $('v').innerHTML=({inicio:vInicio,movs:vMovs,prods:vProds,ctos:vCtos,mas:vMas})[tab]();
-  if(MS)drawM();
+  if(MS&&!skipM)drawM();
 }
 function rowTx(t){
   const c=cl(t.cid),b=bal(t);
@@ -105,7 +113,7 @@ function vInicio(){
   const cob=sum(S.tx.filter(t=>t.type==='sale'),bal),pag=sum(S.tx.filter(t=>t.type==='expense'),bal);
   const low=S.prods.filter(p=>p.stock<=p.min);
   const last=S.tx.slice().reverse().slice(0,6);
-  return `<h1>${esc(S.biz.name)}</h1>${chips(P,'per',PER)}
+  return `<h1>${esc(S.biz.name)}</h1>${syncBanner()}${chips(P,'per',PER)}
   <div class="card hero"><div class="k">Balance (ventas − gastos)</div><div class="v">${m(v-g)}</div>
   <div class="grid" style="margin-top:10px"><div><div class="k">Ventas</div><b>${m(v)}</b></div><div><div class="k">Gastos</div><b>${m(g)}</b></div></div></div>
   <div class="grid"><button class="big" data-a="newsale">+ Vender</button><button class="big alt" data-a="newexp">− Gasto</button></div>
@@ -136,7 +144,24 @@ function vMas(){
   if(more==='cat')return back+vCat();
   if(more==='bk')return back+vBk();
   if(more==='aj')return back+vAj();
-  return `<h1>Más</h1><div class="card">${[['rep','📊 Reportes'],['est','📝 Cotizaciones'],['cat','🛍️ Catálogo'],['bk','💾 Respaldo de datos'],['aj','⚙️ Ajustes del negocio']].map(x=>`<div class="row" data-a="more" data-v="${x[0]}"><span>${x[1]}</span><b>›</b></div>`).join('')}</div>`;
+  if(more==='cu')return back+vCu();
+  return `<h1>Más</h1><div class="card">${[['cu','☁️ Cuenta y sincronización'],['rep','📊 Reportes'],['est','📝 Cotizaciones'],['cat','🛍️ Catálogo'],['bk','💾 Respaldo de datos'],['aj','⚙️ Ajustes del negocio']].map(x=>`<div class="row" data-a="more" data-v="${x[0]}"><span>${x[1]}</span><b>›</b></div>`).join('')}${DIP?'<div class="row" data-a="inst"><span>📲 Instalar app en este aparato</span><b>›</b></div>':''}</div><p class="k">En iPhone: Safari → Compartir → Agregar a inicio.</p>`;
+}
+const SY=window.SY={cfg:false,user:null,status:'local',pending:false,err:'',label:()=>''};
+let DIP=null;
+function syncBanner(){
+  if(!SY.cfg)return '';
+  if(SY.user)return `<p class="k" data-a="gocu" style="margin:2px 0 0;cursor:pointer">☁️ ${esc(SY.label())}</p>`;
+  if(SY.status==='signedout')return `<div class="card" data-a="gocu" style="cursor:pointer;margin-top:10px"><b>☁️ Activa la sincronización</b><small>Entra con Google para usar tus datos en el celular y en el PC.</small></div>`;
+  return '';
+}
+function vCu(){
+  let h='<h1>Cuenta y sincronización</h1>';
+  if(!SY.cfg)h+='<div class="card"><b>Sincronización desactivada</b><p class="k">Falta pegar tu configuración de Firebase en el archivo firebase-config.js. Mientras tanto, los datos se guardan solo en este aparato.</p></div>';
+  else if(SY.status==='noload')h+='<div class="card"><b class="bad">No se pudo cargar Firebase</b><p class="k">Revisa tu conexión a internet y recarga la página. La app sigue funcionando con los datos de este aparato.</p></div>';
+  else if(!SY.user)h+='<div class="card"><p>Entra con tu cuenta de Google para guardar tus datos en la nube y usarlos en el celular y en el PC.</p><button class="big" data-a="login">Entrar con Google</button>'+(SY.err?`<p class="bad">${esc(SY.err)}</p>`:'')+'</div>';
+  else h+=`<div class="card"><div class="row" style="cursor:default"><span>${esc(SY.user.name||'Cuenta de Google')}<small>${esc(SY.user.email)}</small></span></div><div class="row" style="cursor:default"><span>Estado</span><b>${esc(SY.label())}</b></div>${SY.err?`<p class="bad">${esc(SY.err)}</p>`:''}<div class="btns"><button class="r" data-a="logout">Cerrar sesión</button></div></div><p class="k">Usa la misma cuenta de Google en el celular y en el PC. Cada producto, venta o contacto se sincroniza por separado; si editas el mismo registro en dos aparatos, queda el cambio más reciente.</p>`;
+  return h;
 }
 function vRep(){
   const ss=txIn('sale'),ee=txIn('expense'),v=sum(ss,t=>t.total),cost=sum(ss,t=>sum(t.items,i=>i.qty*(i.cost||0))),g=sum(ee,t=>t.total);
@@ -297,8 +322,12 @@ const A={
   delct:d=>ask('¿Borrar este contacto? Sus movimientos se conservan.',()=>{S.cts=S.cts.filter(c=>c.id!==d.id);save();render()}),
   savebiz:()=>{S.biz.name=(F.name||'').trim()||'Mi Negocio';S.biz.cur=(F.cur||'').trim()||'$';save();render();toast('Guardado')},
   restore:()=>{let d;try{d=JSON.parse($('rs').value);if(!d||!d.prods||!d.tx)throw 0}catch(e){toast('El respaldo no es válido');return}
-    ask('Esto reemplaza todos tus datos actuales. ¿Continuar?',()=>{S=Object.assign({biz:{name:'Mi Negocio',cur:'$'},prods:[],cts:[],tx:[],est:[]},d);save();render();toast('Datos restaurados')})},
-  wipe:()=>ask('¿Borrar TODOS los datos? No se puede deshacer.',()=>{S={biz:S.biz,prods:[],cts:[],tx:[],est:[]};save();render();toast('Datos borrados')})
+    ask(SY.user?'Esto reemplaza tus datos actuales, también en la nube y en tus otros aparatos. ¿Continuar?':'Esto reemplaza todos tus datos actuales. ¿Continuar?',()=>{S=Object.assign({biz:{name:'Mi Negocio',cur:'$'},prods:[],cts:[],tx:[],est:[]},d);save();render();toast('Datos restaurados')})},
+  gocu:()=>{tab='mas';more='cu';render()},
+  login:()=>{if(SY.login)SY.login();else toast('La sincronización aún no está lista; espera un momento e intenta de nuevo')},
+  logout:()=>ask(navigator.onLine?'¿Cerrar sesión? Se quitarán los datos de este aparato; siguen guardados en la nube.':'Estás sin conexión: los cambios que no se hayan subido se perderían. ¿Cerrar sesión igual?',()=>{if(SY.logout)SY.logout()}),
+  inst:()=>{if(DIP){DIP.prompt();DIP=null;render(true)}},
+  wipe:()=>ask(SY.user?'¿Borrar TODOS los datos, también en la nube y en tus otros aparatos? No se puede deshacer.':'¿Borrar TODOS los datos? No se puede deshacer.',()=>{S={biz:S.biz,prods:[],cts:[],tx:[],est:[]};save();render();toast('Datos borrados')})
 };
 function copyTxt(t){
   const done=()=>toast('Copiado');
@@ -320,7 +349,17 @@ document.addEventListener('input',e=>{
     else if($('ctot')&&F.q)$('ctot').textContent=m(cTot());
   }
 });
+let _pend=false;
+const isTyping=()=>{const a=document.activeElement;return !!a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)};
+window.APP={getS:()=>S,persist,toast,onSave:null,
+  refresh:()=>{if(isTyping()){_pend=true;return}render(true)},
+  reset:()=>{S={biz:{name:'Mi Negocio',cur:'$'},prods:[],cts:[],tx:[],est:[]};persist();render(true)}};
+document.addEventListener('focusout',()=>{if(_pend)setTimeout(()=>{if(!isTyping()){_pend=false;render(true)}},150)});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();DIP=e;if(tab==='mas'&&!more)render(true)});
+window.addEventListener('appinstalled',()=>{DIP=null;if(tab==='mas'&&!more)render(true)});
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();
 </script>
+<script type="module" src="sync.js"></script>
 </body>
 </html>
