@@ -1,15 +1,20 @@
 ACTUALIZACION (cambios de esta version)
 ---------------------------------------
 Para actualizar: sube TODOS los archivos de este zip a tu repositorio, reemplazando los anteriores.
-Tu firebase-config.js ya tiene tu configuracion: NO lo reemplaces (sube el tuyo, no el de este zip).
+Este zip NO incluye firebase-config.js a proposito: tu repositorio ya tiene el tuyo, no lo toques.
 Tus datos no se pierden. Si el celular muestra la version vieja, cierra y vuelve a abrir la app.
 
+ - Barra de abajo: Inicio, Movimientos, Reportes, Contactos y Mas. Productos ahora esta en Mas -> Productos.
+ - Corregido: el boton Reportes de la pantalla de Inicio ahora abre los reportes.
+ - Tema azul (el color del logo de Hollman), en modo claro y oscuro.
+ - Logo de Hollman Publicidad y NIT 1.047.483.986-0 por defecto en los recibos (NIT debajo del logo).
+ - Al abrir un recibo se pueden cambiar, solo para ese recibo: nombre y NIT del negocio, nombre y NIT del cliente.
+ - Mas -> Ajustes del negocio: datos fijos, logo, y si el recibo muestra "Solo el logo" o "Logo y nombre".
+ - Contactos -> Importar contactos: elegir del telefono (solo Chrome en Android) o cargar un archivo .vcf / .csv.
  - Fecha editable al registrar ventas, gastos, compras y cobros.
- - NIT o cedula en clientes y proveedores.
- - "+ Nuevo cliente" dentro de la venta, e "Importar de mi telefono" en Contactos (Chrome en Android).
+ - NIT o cedula en clientes y proveedores; "+ Nuevo cliente" dentro de la venta.
  - Ya no sale la ventana de WhatsApp al registrar una venta o cotizacion.
  - Recibos y cotizaciones en PDF (carta o ticket 80 mm): toca un movimiento -> "Recibo PDF".
- - Mas -> Ajustes del negocio: nombre, NIT, direccion, telefono, correo, logo y mensaje al pie.
  - Los valores se muestran con punto de miles ($1.250.000).
 
 MI NEGOCIO - PASO A PASO PARA PUBLICAR CON SINCRONIZACION
