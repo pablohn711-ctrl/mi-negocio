@@ -86,6 +86,8 @@ const bal=t=>Math.max(0,Math.round((t.total-t.paid)*100)/100);
 let tab='inicio',more=null,P='d',MF='all',CK='c',QS='',F=null,MS=null,YES=null,PREV=null,RET=null,RB=null,tto;
 const inPer=d=>P==='d'?d===today():P==='w'?d>=daysAgo(6):d.slice(0,7)===today().slice(0,7);
 const txIn=ty=>S.tx.filter(t=>t.type===ty&&inPer(t.date));
+const paysOf=t=>(t.pays&&t.pays.length)?t.pays:(t.paid>0?[{date:t.date,amt:t.paid}]:[]);
+const cashIn=(ty,fn)=>sum(S.tx.filter(t=>t.type===ty),t=>sum(paysOf(t).filter(p=>fn(p.date)),p=>p.amt));
 const toast=s=>{const e=$('t');e.textContent=s;e.style.display='block';clearTimeout(tto);tto=setTimeout(()=>e.style.display='none',2600)};
 const chips=(cur,key,o)=>'<div class="chips">'+o.map(x=>`<button class="chip ${cur===x[0]?'on':''}" data-a="${key}" data-v="${x[0]}">${x[1]}</button>`).join('')+'</div>';
 const inp=(l,k,t,ph)=>`<label>${l}</label><input data-b="${k}" type="${t||'text'}" ${t==='number'?'inputmode="decimal" step="any" min="0"':''} placeholder="${esc(ph||'')}" value="${esc(F[k])}">`;
@@ -117,13 +119,13 @@ function rowTx(t){
 }
 const PER=[['d','Hoy'],['w','7 días'],['m','Este mes']];
 function vInicio(){
-  const v=sum(txIn('sale'),t=>t.total),g=sum(txIn('expense'),t=>t.total);
+  const v=cashIn('sale',inPer),g=cashIn('expense',inPer),vend=sum(txIn('sale'),t=>t.total);
   const cob=sum(S.tx.filter(t=>t.type==='sale'),bal),pag=sum(S.tx.filter(t=>t.type==='expense'),bal);
   const low=S.prods.filter(p=>p.stock<=p.min);
   const last=S.tx.slice().reverse().slice(0,6);
   return `<h1>${esc(S.biz.name)}</h1>${syncBanner()}${chips(P,'per',PER)}
-  <div class="card hero"><div class="k">Balance (ventas − gastos)</div><div class="v">${m(v-g)}</div>
-  <div class="grid" style="margin-top:10px"><div><div class="k">Ventas</div><b>${m(v)}</b></div><div><div class="k">Gastos</div><b>${m(g)}</b></div></div></div>
+  <div class="card hero"><div class="k">Balance (dinero recibido − gastos pagados)</div><div class="v">${m(v-g)}</div>
+  <div class="grid" style="margin-top:10px"><div><div class="k">Recibido</div><b>${m(v)}</b></div><div><div class="k">Gastos pagados</div><b>${m(g)}</b></div></div><div class="k" style="margin-top:8px">Vendido en el período: ${m(vend)} (lo no cobrado está en Por cobrar)</div></div>
   <div class="grid"><button class="big" data-a="newsale">+ Vender</button><button class="big alt" data-a="newexp">− Gasto</button></div>
   <div class="grid" style="margin-top:10px"><button class="big g" data-a="newest">Cotizar</button><button class="big g" data-a="tab" data-v="rep">Reportes</button></div>
   <div class="grid" style="margin-top:12px"><div class="card" data-a="goc" data-v="c"><div class="k">Por cobrar</div><div class="v warn">${m(cob)}</div></div><div class="card" data-a="goc" data-v="p"><div class="k">Por pagar</div><div class="v bad">${m(pag)}</div></div></div>
@@ -171,18 +173,18 @@ function vCu(){
   return h;
 }
 function vRep(){
-  const ss=txIn('sale'),ee=txIn('expense'),v=sum(ss,t=>t.total),cost=sum(ss,t=>sum(t.items,i=>i.qty*(i.cost||0))),g=sum(ee,t=>t.total);
-  const days=[];for(let n=6;n>=0;n--){const d=daysAgo(n);days.push([d,sum(S.tx.filter(t=>t.type==='sale'&&t.date===d),t=>t.total)])}
+  const ss=txIn('sale'),ee=txIn('expense'),v=sum(ss,t=>t.total),cost=sum(ss,t=>sum(t.items,i=>i.qty*(i.cost||0))),rec=cashIn('sale',inPer),g=cashIn('expense',inPer);
+  const days=[];for(let n=6;n>=0;n--){const d=daysAgo(n);days.push([d,cashIn('sale',x=>x===d)])}
   const mx=Math.max(1,...days.map(x=>x[1]));
   const top={};ss.forEach(t=>t.items.forEach(i=>{const o=top[i.name]||(top[i.name]={q:0,r:0});o.q+=i.qty;o.r+=i.qty*i.price}));
   const tl=Object.keys(top).map(k=>[k,top[k]]).sort((a,b)=>b[1].r-a[1].r).slice(0,5);
-  const cats={};ee.forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+t.total});
+  const cats={};S.tx.filter(t=>t.type==='expense').forEach(t=>{const a=sum(paysOf(t).filter(p=>inPer(p.date)),p=>p.amt);if(a)cats[t.cat]=(cats[t.cat]||0)+a});
   const cl2=Object.keys(cats).map(k=>[k,cats[k]]).sort((a,b)=>b[1]-a[1]);
   return `<h1>Reportes</h1>${chips(P,'per',PER)}
-  <div class="card"><div class="row"><span>Ventas (${ss.length})</span><b class="ok">${m(v)}</b></div><div class="row"><span>Ticket promedio</span><b>${m(ss.length?v/ss.length:0)}</b></div><div class="row"><span>Costo de lo vendido</span><b>${m(cost)}</b></div><div class="row"><span>Utilidad bruta</span><b>${m(v-cost)}</b></div><div class="row"><span>Gastos</span><b class="bad">${m(g)}</b></div><div class="row"><span><b>Balance</b></span><b>${m(v-g)}</b></div></div>
-  <h2>Ventas últimos 7 días</h2><div class="card"><div class="bars">${days.map(d=>`<div><i style="height:${Math.round(d[1]/mx*80)}px"></i>${fd(d[0])}</div>`).join('')}</div></div>
+  <div class="card"><div class="row"><span>Dinero recibido</span><b class="ok">${m(rec)}</b></div><div class="row"><span>Gastos pagados</span><b class="bad">${m(g)}</b></div><div class="row"><span><b>Balance</b></span><b>${m(rec-g)}</b></div></div><h2>De las ventas hechas</h2><div class="card"><div class="row"><span>Ventas hechas (${ss.length})</span><b>${m(v)}</b></div><div class="row"><span>Ticket promedio</span><b>${m(ss.length?v/ss.length:0)}</b></div><div class="row"><span>Costo de lo vendido</span><b>${m(cost)}</b></div><div class="row"><span>Utilidad bruta</span><b>${m(v-cost)}</b></div></div>
+  <h2>Dinero recibido últimos 7 días</h2><div class="card"><div class="bars">${days.map(d=>`<div><i style="height:${Math.round(d[1]/mx*80)}px"></i>${fd(d[0])}</div>`).join('')}</div></div>
   <h2>Más vendidos</h2><div class="card">${tl.length?tl.map(x=>`<div class="row"><span>${esc(x[0])}<small>${x[1].q} uds</small></span><b>${m(x[1].r)}</b></div>`).join(''):'<div class="empty">Sin datos en este período.</div>'}</div>
-  <h2>Gastos por categoría</h2><div class="card">${cl2.length?cl2.map(x=>`<div class="row"><span>${esc(x[0])}</span><b>${m(x[1])}</b></div>`).join(''):'<div class="empty">Sin gastos en este período.</div>'}</div>`;
+  <h2>Gastos pagados por categoría</h2><div class="card">${cl2.length?cl2.map(x=>`<div class="row"><span>${esc(x[0])}</span><b>${m(x[1])}</b></div>`).join(''):'<div class="empty">Sin gastos en este período.</div>'}</div>`;
 }
 function vEst(){
   return `<h1>Cotizaciones</h1><div class="btns"><button data-a="newest">+ Nueva cotización</button></div><div class="card" style="margin-top:12px">${S.est.length?S.est.slice().reverse().map(e=>{const c=cl(e.cid);return `<div class="row" data-a="estd" data-id="${e.id}"><span>${c?esc(c.name):'Sin cliente'}<small>${fd(e.date)} · ${e.items.length} ítem(s)</small></span><b>${m(e.total)}</b></div>`}).join(''):'<div class="empty">No hay cotizaciones.</div>'}</div>`;
@@ -449,7 +451,7 @@ function docM(){
   if(!d)return '<p>No se encontró el documento.</p><div class="btns"><button class="g" data-a="close">Cerrar</button></div>';
   const est=F.kind==='est';
   return `<h3>${esc(d.title)} N.º ${d.num}</h3><p class="k">${fdl(d.date)} · ${m(d.total)}${d.client?' · '+esc(d.client.name):''}</p>
-  <h4 style="margin:10px 0 2px">Datos que saldrán en el documento</h4><p class="k" style="margin:0 0 6px">Puedes cambiarlos solo para este recibo antes de descargarlo.</p>${inp('Nombre del negocio','iname')}${inp('NIT del negocio','init')}<label>Cliente guardado</label><select data-b="ccid"><option value="">— Sin cliente / escribir a mano —</option>${S.cts.filter(c=>c.kind==='c').map(c=>`<option value="${c.id}" ${F.ccid===c.id?'selected':''}>${esc(c.name)}${c.nit?' · '+esc(c.nit):''}</option>`).join('')}</select>${inp('Nombre del cliente','cname')}${inp('NIT del cliente','cnit')}
+  <h4 style="margin:10px 0 2px">Datos que saldrán en el documento</h4><p class="k" style="margin:0 0 6px">Puedes cambiarlos solo para este recibo antes de descargarlo.</p>${inp('Nombre del negocio','iname')}${inp('NIT del negocio','init')}<label>Elegir cliente guardado (${S.cts.length} contactos)</label><select data-b="ccid"><option value="">— Sin cliente / escribir a mano —</option>${S.cts.slice().sort((a,b)=>(a.kind===b.kind?0:a.kind==='c'?-1:1)||a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${F.ccid===c.id?'selected':''}>${esc(c.name)}${c.nit?' · '+esc(c.nit):''}${c.kind==='p'?' (proveedor)':''}</option>`).join('')}</select><button class="g" data-a="ctq" data-v="c" style="margin-top:6px">+ Nuevo cliente</button>${inp('Nombre del cliente','cname')}${inp('NIT del cliente','cnit')}
   <label>Formato del PDF</label><select data-b="fmt"><option value="a4" ${F.fmt!=='t80'?'selected':''}>Carta (hoja completa)</option><option value="t80" ${F.fmt==='t80'?'selected':''}>Ticket 80 mm</option></select>
   <div class="btns"><button data-a="pdfdl">Descargar PDF</button>${navigator.share?'<button class="g" data-a="pdfsh">Compartir</button>':''}</div>
   ${est?`<div class="btns"><button class="g" data-a="est2sale" data-id="${F.id}">Convertir en venta</button><button class="r" data-a="delest" data-id="${F.id}">Borrar</button></div>`:''}
@@ -591,7 +593,7 @@ const A={
     const o={id:F.id||uid(),name:n,phone:(F.phone||'').trim(),nit:(F.nit||'').trim(),kind:F.kind};
     if(F.id)S.cts[S.cts.findIndex(c=>c.id===F.id)]=o;else S.cts.push(o);
     save();
-    if(RET){F=RET.F;F.cid=o.id;MS=RET.MS;RET=null;render();toast((o.kind==='c'?'Cliente':'Proveedor')+' agregado');return}
+    if(RET){F=RET.F;if('ccid' in F){F.ccid=o.id;F.cname=o.name;F.cnit=o.nit||''}else F.cid=o.id;MS=RET.MS;RET=null;render();toast((o.kind==='c'?'Cliente':'Proveedor')+' agregado');return}
     closeM();render()},
   ctq:d=>{RET={F:F,MS:MS};F={name:'',phone:'',nit:'',kind:d.v,ret:1};openM(ctM)},
   ctback:()=>{if(RET){F=RET.F;MS=RET.MS;RET=null;drawM()}},
