@@ -1,0 +1,78 @@
+ACTUALIZACION (cambios de esta version)
+---------------------------------------
+Para actualizar: sube TODOS los archivos de este zip a tu repositorio, reemplazando los anteriores.
+Tu firebase-config.js ya tiene tu configuracion: NO lo reemplaces (sube el tuyo, no el de este zip).
+Tus datos no se pierden. Si el celular muestra la version vieja, cierra y vuelve a abrir la app.
+
+ - Fecha editable al registrar ventas, gastos, compras y cobros.
+ - NIT o cedula en clientes y proveedores.
+ - "+ Nuevo cliente" dentro de la venta, e "Importar de mi telefono" en Contactos (Chrome en Android).
+ - Ya no sale la ventana de WhatsApp al registrar una venta o cotizacion.
+ - Recibos y cotizaciones en PDF (carta o ticket 80 mm): toca un movimiento -> "Recibo PDF".
+ - Mas -> Ajustes del negocio: nombre, NIT, direccion, telefono, correo, logo y mensaje al pie.
+ - Los valores se muestran con punto de miles ($1.250.000).
+
+MI NEGOCIO - PASO A PASO PARA PUBLICAR CON SINCRONIZACION
+=========================================================
+
+ARCHIVOS (todos van juntos en la raiz de tu repositorio "mi-negocio")
+  index.html            la app
+  firebase-config.js    AQUI pegas tu configuracion de Firebase (unico archivo que editas)
+  sync.js, sync-core.js sincronizacion con la nube
+  sw.js                 hace que abra sin internet
+  manifest.json         datos para instalarla como app
+  icon-*.png, apple-touch-icon.png   iconos
+
+1) CREAR EL PROYECTO EN FIREBASE (gratis)
+   a. Entra a https://console.firebase.google.com con tu cuenta de Google.
+   b. "Crear proyecto" -> ponle un nombre -> puedes desactivar Google Analytics.
+   c. Menu "Compilacion" -> "Authentication" -> "Comenzar" -> pestana "Sign-in method"
+      -> activa "Google" (elige tu correo de soporte) -> Guardar.
+   d. En Authentication -> "Configuracion" -> "Dominios autorizados" -> "Agregar dominio":
+         pablohn711-ctrl.github.io
+      (sin https:// y sin /mi-negocio). Sin este paso el boton de Google da error.
+   e. Menu "Compilacion" -> "Firestore Database" -> "Crear base de datos"
+      -> elige una ubicacion cercana -> "Iniciar en modo de produccion".
+   f. En Firestore -> pestana "Reglas" -> borra todo y pega esto -> "Publicar":
+
+      rules_version = '2';
+      service cloud.firestore {
+        match /databases/{db}/documents {
+          match /usuarios/{uid}/{doc=**} {
+            allow read, write: if request.auth != null && request.auth.uid == uid;
+          }
+        }
+      }
+
+   g. Rueda de engranaje (Configuracion del proyecto) -> "Tus apps" -> icono web "</>"
+      -> ponle un nombre -> "Registrar app". Copia los valores de "firebaseConfig".
+
+2) PEGAR LA CONFIGURACION
+   Abre firebase-config.js y reemplaza cada "PEGA_AQUI" por el valor que te dio Firebase
+   (apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId).
+   Deja las comillas y las comas.
+
+3) SUBIR A GITHUB
+   En tu repositorio "mi-negocio": "Add file" -> "Upload files" -> arrastra TODOS los archivos
+   (descomprimidos, no el .zip) -> "Commit changes". Se reemplazan los anteriores.
+   Espera 1-2 minutos y abre https://pablohn711-ctrl.github.io/mi-negocio/
+   Si ves la version vieja, recarga con Ctrl+Shift+R.
+
+4) ENTRAR Y SINCRONIZAR
+   En la app: Mas -> "Cuenta y sincronizacion" -> "Entrar con Google".
+   Haz lo mismo, con la MISMA cuenta, en el celular y en el PC.
+   Los datos que ya tengas en este navegador se suben solos la primera vez.
+
+5) INSTALAR EN EL CELULAR
+   Android (Chrome): menu de tres puntos -> "Instalar app" (o Mas -> "Instalar app en este aparato").
+   iPhone (Safari): Compartir -> "Agregar a inicio".
+   PC (Chrome/Edge): icono de instalar en la barra de direcciones.
+
+NOTAS
+ - Funciona sin internet: lo que registres se sube al reconectar.
+ - Cada producto, venta, gasto o contacto se sincroniza por separado. Si editas el MISMO registro
+   en dos aparatos a la vez, queda el cambio mas reciente (usa la hora de cada aparato).
+ - Cerrar sesion borra los datos de ESE aparato (siguen en la nube).
+ - "Borrar todos los datos" y "Restaurar respaldo" tambien afectan la nube y tus otros aparatos.
+ - Si algun dia cambias la direccion del sitio, agrega el nuevo dominio en Dominios autorizados.
+ - Los limites gratuitos de Firebase pueden cambiar; revisalos en su pagina de precios.

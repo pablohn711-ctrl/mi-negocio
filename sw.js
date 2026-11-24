@@ -2,7 +2,7 @@
    - Archivos propios: red primero (así recibes las actualizaciones) y caché si no hay red.
    - Librerías de Firebase (gstatic): caché primero, se guardan la primera vez.
    - Los datos van por Firestore, que guarda su propia copia sin conexión. */
-const V = 'mi-negocio-v3';
+const V = 'mi-negocio-v4';
 const SHELL = ['./', 'index.html', 'sync.js', 'sync-core.js', 'firebase-config.js', 'manifest.json',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 
