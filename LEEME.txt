@@ -4,6 +4,8 @@ Para actualizar: sube TODOS los archivos de este zip a tu repositorio, reemplaza
 Este zip NO incluye firebase-config.js a proposito: tu repositorio ya tiene el tuyo, no lo toques.
 Tus datos no se pierden. Si el celular muestra la version vieja, cierra y vuelve a abrir la app.
 
+ - Al abrir un recibo se puede elegir un cliente guardado y se rellenan su nombre y NIT.
+ - Importar contactos: el boton principal elige directo de los contactos del telefono (Chrome en Android); el archivo es opcional.
  - Barra de abajo: Inicio, Movimientos, Reportes, Contactos y Mas. Productos ahora esta en Mas -> Productos.
  - Corregido: el boton Reportes de la pantalla de Inicio ahora abre los reportes.
  - Tema azul (el color del logo de Hollman), en modo claro y oscuro.

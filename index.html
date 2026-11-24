@@ -416,7 +416,7 @@ function ensureNum(kind,id){const t=(kind==='sale'?S.tx.filter(x=>x.type==='sale
 function docOf(kind,id,ov){
   const sale=kind==='sale',t=sale?S.tx.find(x=>x.id===id&&x.type==='sale'):S.est.find(x=>x.id===id);
   if(!t)return null;
-  const o=ov||t.ov||{},c=cl(t.cid),B=S.biz;
+  const o=ov||t.ov||{},c=('cid' in o)?cl(o.cid):cl(t.cid),B=S.biz;
   let client=null;
   if(c||o.cname||o.cnit){client={name:o.cname||(c&&c.name)||'',nit:('cnit' in o)?(o.cnit||''):((c&&c.nit)||''),phone:(c&&c.phone)||''};if(!client.name&&!client.nit)client=null}
   return {kind,title:sale?'RECIBO DE VENTA':'COTIZACIÓN',num:p4(t.num),date:t.date,client,issuer:{name:o.name||B.name||'Mi Negocio',custom:!!o.name&&o.name!==B.name,nit:('nit' in o)?(o.nit||''):(B.nit||'')},items:t.items,sub:sum(t.items,i=>i.qty*i.price),disc:t.disc||0,total:t.total,paid:sale?t.paid:null,pays:sale?(t.pays||[]):[],note:t.note||''};
@@ -429,15 +429,16 @@ function pdfFor(kind,id,fmt,ov){
 const pdfName=d=>(d.kind==='est'?'Cotizacion':'Recibo')+'-'+d.num+(d.client?'-'+d.client.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,''):'')+'.pdf';
 const docFind=(kind,id)=>kind==='sale'?S.tx.find(x=>x.id===id&&x.type==='sale'):S.est.find(x=>x.id===id);
 function docF(kind,id){
-  const t=docFind(kind,id)||{},o=t.ov||{},c=cl(t.cid)||{},B=S.biz;
-  return {kind,id,fmt:B.fmt||'a4',iname:o.name||B.name||'',init:('nit' in o)?(o.nit||''):(B.nit||''),cname:o.cname||c.name||'',cnit:('cnit' in o)?(o.cnit||''):(c.nit||'')};
+  const t=docFind(kind,id)||{},o=t.ov||{},B=S.biz,ccid=('cid' in o)?(o.cid||''):(t.cid||''),c=cl(ccid)||{};
+  return {kind,id,fmt:B.fmt||'a4',iname:o.name||B.name||'',init:('nit' in o)?(o.nit||''):(B.nit||''),ccid,cname:o.cname||c.name||'',cnit:('cnit' in o)?(o.cnit||''):(c.nit||'')};
 }
-const ovFromF=()=>({name:(F.iname||'').trim(),nit:(F.init||'').trim(),cname:(F.cname||'').trim(),cnit:(F.cnit||'').trim()});
+const ovFromF=()=>({name:(F.iname||'').trim(),nit:(F.init||'').trim(),cid:F.ccid||'',cname:(F.cname||'').trim(),cnit:(F.cnit||'').trim()});
 function ovStore(){
   const t=docFind(F.kind,F.id);if(!t)return;
-  const c=cl(t.cid)||{},B=S.biz,v=ovFromF(),o={};
+  const B=S.biz,v=ovFromF(),c=cl(v.cid)||{},o={};
   if(v.name&&v.name!==(B.name||''))o.name=v.name;
   if(v.nit!==(B.nit||''))o.nit=v.nit;
+  if(v.cid!==(t.cid||''))o.cid=v.cid;
   if(v.cname&&v.cname!==(c.name||''))o.cname=v.cname;
   if(v.cnit!==(c.nit||''))o.cnit=v.cnit;
   if(JSON.stringify(o)!==JSON.stringify(t.ov||{})){if(Object.keys(o).length)t.ov=o;else delete t.ov;save()}
@@ -448,7 +449,7 @@ function docM(){
   if(!d)return '<p>No se encontró el documento.</p><div class="btns"><button class="g" data-a="close">Cerrar</button></div>';
   const est=F.kind==='est';
   return `<h3>${esc(d.title)} N.º ${d.num}</h3><p class="k">${fdl(d.date)} · ${m(d.total)}${d.client?' · '+esc(d.client.name):''}</p>
-  <h4 style="margin:10px 0 2px">Datos que saldrán en el documento</h4><p class="k" style="margin:0 0 6px">Puedes cambiarlos solo para este recibo antes de descargarlo.</p>${inp('Nombre del negocio','iname')}${inp('NIT del negocio','init')}${inp('Nombre del cliente','cname')}${inp('NIT del cliente','cnit')}
+  <h4 style="margin:10px 0 2px">Datos que saldrán en el documento</h4><p class="k" style="margin:0 0 6px">Puedes cambiarlos solo para este recibo antes de descargarlo.</p>${inp('Nombre del negocio','iname')}${inp('NIT del negocio','init')}<label>Cliente guardado</label><select data-b="ccid"><option value="">— Sin cliente / escribir a mano —</option>${S.cts.filter(c=>c.kind==='c').map(c=>`<option value="${c.id}" ${F.ccid===c.id?'selected':''}>${esc(c.name)}${c.nit?' · '+esc(c.nit):''}</option>`).join('')}</select>${inp('Nombre del cliente','cname')}${inp('NIT del cliente','cnit')}
   <label>Formato del PDF</label><select data-b="fmt"><option value="a4" ${F.fmt!=='t80'?'selected':''}>Carta (hoja completa)</option><option value="t80" ${F.fmt==='t80'?'selected':''}>Ticket 80 mm</option></select>
   <div class="btns"><button data-a="pdfdl">Descargar PDF</button>${navigator.share?'<button class="g" data-a="pdfsh">Compartir</button>':''}</div>
   ${est?`<div class="btns"><button class="g" data-a="est2sale" data-id="${F.id}">Convertir en venta</button><button class="r" data-a="delest" data-id="${F.id}">Borrar</button></div>`:''}
@@ -459,10 +460,15 @@ function readLogo(file){return new Promise((res,rej)=>{const fr=new FileReader()
 
 /* ---------- Importar contactos ---------- */
 function impM(){
-  return `<h3>Importar contactos</h3>
-  ${canImp()?'<button class="big" data-a="pick">Elegir de los contactos del teléfono</button><p class="k">Funciona en Chrome para Android.</p>':'<p class="k">Este navegador no puede leer los contactos directamente (solo Chrome en Android lo permite). Usa un archivo de contactos:</p>'}
-  <label>Archivo de contactos (.vcf o .csv)</label><input type="file" accept=".vcf,.csv,text/vcard,text/x-vcard,text/csv" data-cfile="1">
-  <p class="k">Cómo conseguir el archivo: en contacts.google.com elige Exportar y luego "vCard" o "CSV de Google". En el celular: app Contactos → menú ⋮ → Exportar contactos.</p>
+  const ua=navigator.userAgent||'',and=/Android/i.test(ua),ios=/iPhone|iPad|iPod/i.test(ua);
+  const top=canImp()
+    ?'<button class="big" data-a="pick">Elegir de los contactos del teléfono</button><p class="k">Se abre tu lista de contactos: marca los que quieras importar y confirma.</p>'
+    :(and?'<p><b>Este navegador no ofrece el selector de contactos.</b></p><p class="k">Abre esta misma página en <b>Chrome</b> (no en Brave, Firefox ni Samsung Internet) y vuelve a tocar "Importar contactos". Si instalaste la app desde otro navegador, instálala de nuevo desde Chrome.</p>'
+    :(ios?'<p><b>El iPhone no permite leer los contactos desde una página web.</b></p>':'<p><b>Los computadores no tienen contactos del teléfono para elegir.</b></p><p class="k">Abre la app en Chrome desde tu celular Android.</p>'));
+  return `<h3>Importar contactos</h3>${top}
+  <h4 style="margin:14px 0 2px">Otra opción: archivo de contactos</h4>
+  <input type="file" accept=".vcf,.csv,text/vcard,text/x-vcard,text/csv" data-cfile="1">
+  <p class="k">Archivo .vcf o .csv. En contacts.google.com: Exportar → "vCard" o "CSV de Google".</p>
   <div class="btns"><button class="g" data-a="close">Cerrar</button></div>`;
 }
 function addCts(list){
@@ -638,6 +644,7 @@ document.addEventListener('input',e=>{
   if(el.dataset.f){QS=el.value.toLowerCase();document.querySelectorAll('.pr').forEach(r=>{r.style.display=r.dataset.n.includes(QS)?'':'none'});return}
   if(el.dataset.b&&F){
     F[el.dataset.b]=el.value;
+    if(el.dataset.b==='ccid'){const c=cl(el.value);F.cname=c?c.name:'';F.cnit=c?(c.nit||''):'';drawM();return}
     if(el.dataset.b==='pay')drawM();
     else if($('ctot')&&F.q)$('ctot').textContent=m(cTot());
   }
