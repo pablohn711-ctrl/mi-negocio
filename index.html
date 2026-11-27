@@ -51,6 +51,7 @@ pre{white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:10px;fo
 .bars{display:flex;gap:6px;align-items:flex-end;height:110px;margin-top:8px}
 .bars div{flex:1;text-align:center;font-size:11px;color:var(--mute)}.bars i{display:block;background:var(--pri);border-radius:5px 5px 0 0;min-height:2px}
 #t{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;z-index:30;display:none;max-width:90%;font-size:14px}
+button:disabled{opacity:.45}
 </style>
 </head>
 <body>
@@ -72,7 +73,8 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const m=n=>{n=Math.round((+n||0)*100)/100;const neg=n<0;n=Math.abs(n);let [i,d]=n.toFixed(2).split('.');i=i.replace(/\B(?=(\d{3})+(?!\d))/g,'.');d=d.replace(/0+$/,'');return (neg?'-':'')+S.biz.cur+i+(d?','+d:'')};
 const vd=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')?s:today();
 const waNum=p=>{const raw=String(p||'').trim();let d=raw.replace(/\D/g,'');if(!d)return '';const cc=String(S.biz.cc==null?'57':S.biz.cc).replace(/\D/g,'');if(raw[0]!=='+'&&d.length<=10&&cc)d=cc+d;return d};
-const canImp=()=>!!(navigator.contacts&&navigator.contacts.select&&window.ContactsManager);
+const inTwa=(()=>{try{if(/^android-app:\/\//.test(document.referrer||''))localStorage.setItem('twa','1');return localStorage.getItem('twa')==='1'}catch(e){return /^android-app:\/\//.test(document.referrer||'')}})();
+const canImp=()=>!inTwa&&!!(navigator.contacts&&navigator.contacts.select&&window.ContactsManager);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
 const p2=n=>String(n).padStart(2,'0');
@@ -83,7 +85,7 @@ const fd=d=>d.split('-').reverse().slice(0,2).join('/');
 const prod=id=>S.prods.find(p=>p.id===id);
 const cl=id=>S.cts.find(c=>c.id===id);
 const bal=t=>Math.max(0,Math.round((t.total-t.paid)*100)/100);
-let tab='inicio',more=null,P='d',MF='all',CK='c',QS='',F=null,MS=null,YES=null,PREV=null,RET=null,RB=null,tto;
+let tab='inicio',more=null,P='d',MF='all',CK='c',QS='',SEL=null,F=null,MS=null,YES=null,PREV=null,RET=null,RB=null,tto;
 const inPer=d=>P==='d'?d===today():P==='w'?d>=daysAgo(6):d.slice(0,7)===today().slice(0,7);
 const txIn=ty=>S.tx.filter(t=>t.type===ty&&inPer(t.date));
 const paysOf=t=>(t.pays&&t.pays.length)?t.pays:(t.paid>0?[{date:t.date,amt:t.paid}]:[]);
@@ -145,7 +147,7 @@ function vProds(){
 const cbal=c=>sum(S.tx.filter(t=>t.cid===c.id&&t.type===(c.kind==='c'?'sale':'expense')),bal);
 function vCtos(){
   const l=S.cts.filter(c=>c.kind===CK);
-  return `<h1>Contactos</h1>${chips(CK,'ck',[['c','Clientes'],['p','Proveedores']])}<div class="btns"><button data-a="ct">+ Nuevo ${CK==='c'?'cliente':'proveedor'}</button><button class="g" data-a="impct">Importar contactos</button></div><div class="card" style="margin-top:12px">${l.length?l.map(c=>{const b=cbal(c);return `<div class="row" data-a="ctd" data-id="${c.id}"><span>${esc(c.name)}<small>${esc(c.phone||'Sin teléfono')}${c.nit?' · NIT '+esc(c.nit):''}</small></span><b class="${b>0?'warn':''}">${b>0?(CK==='c'?'Debe ':'Debo ')+m(b):'Al día'}</b></div>`}).join(''):'<div class="empty">Aún no hay contactos.</div>'}</div>`;
+  return `<h1>Contactos</h1>${chips(CK,'ck',[['c','Clientes'],['p','Proveedores']])}<div class="btns"><button data-a="ct">+ Nuevo ${CK==='c'?'cliente':'proveedor'}</button><button class="g" data-a="impct">Importar contactos</button></div>${SEL?`<div class="card" style="margin-top:10px"><b>${SEL.size} seleccionado(s)</b><div class="btns" style="margin-top:8px"><button class="g" data-a="selall">Todos${QS?' (los de la búsqueda)':''}</button><button class="g" data-a="selnone">Ninguno</button></div><div class="btns"><button class="r" data-a="selDel" ${SEL.size?'':'disabled'}>Borrar (${SEL.size})</button><button class="g" data-a="selmode">Cancelar</button></div></div>`:(l.length?`<div class="btns" style="margin-top:8px"><button class="g" data-a="selmode">Seleccionar varios para borrar</button></div>`:'')}${l.length>5?srch():''}<div class="k" style="margin:8px 2px 0">${l.length} ${CK==='c'?'cliente(s)':'proveedor(es)'}</div><div class="card" style="margin-top:6px">${l.length?l.map(c=>{const b=cbal(c),n=(c.name+' '+(c.phone||'')+' '+(c.nit||'')).toLowerCase();return `<div class="row pr" data-n="${esc(n)}" style="${QS&&!n.includes(QS)?'display:none':''}" data-a="${SEL?'ctsel':'ctd'}" data-id="${c.id}"><span>${SEL?(SEL.has(c.id)?'☑ ':'☐ '):''}${esc(c.name)}<small>${esc(c.phone||'Sin teléfono')}${c.nit?' · NIT '+esc(c.nit):''}</small></span><b class="${b>0?'warn':''}">${b>0?(CK==='c'?'Debe ':'Debo ')+m(b):'Al día'}</b></div>`}).join(''):'<div class="empty">Aún no hay contactos.</div>'}</div>`;
 }
 function vMas(){
   const back='<button class="g" data-a="more" data-v="">‹ Volver</button>';
@@ -465,7 +467,7 @@ function impM(){
   const ua=navigator.userAgent||'',and=/Android/i.test(ua),ios=/iPhone|iPad|iPod/i.test(ua);
   const top=canImp()
     ?'<button class="big" data-a="pick">Elegir de los contactos del teléfono</button><p class="k">Se abre tu lista de contactos: marca los que quieras importar y confirma.</p>'
-    :(and?'<p><b>Este navegador no ofrece el selector de contactos.</b></p><p class="k">Abre esta misma página en <b>Chrome</b> (no en Brave, Firefox ni Samsung Internet) y vuelve a tocar "Importar contactos". Si instalaste la app desde otro navegador, instálala de nuevo desde Chrome.</p>'
+    :(inTwa?'<p><b>En esta versión de la app el selector del teléfono no está disponible.</b></p><p class="k">Usa el archivo de contactos (abajo). Es fácil: en <b>contacts.google.com</b> toca Exportar → vCard o CSV, y luego elige ese archivo aquí. Si prefieres el selector directo, instala la app desde Chrome (menú ⋮ → Instalar app).</p>':and?'<p><b>Este navegador no ofrece el selector de contactos.</b></p><p class="k">Abre esta misma página en <b>Chrome</b> (no en Brave, Firefox ni Samsung Internet) y vuelve a tocar "Importar contactos". Si instalaste la app desde otro navegador, instálala de nuevo desde Chrome.</p>'
     :(ios?'<p><b>El iPhone no permite leer los contactos desde una página web.</b></p>':'<p><b>Los computadores no tienen contactos del teléfono para elegir.</b></p><p class="k">Abre la app en Chrome desde tu celular Android.</p>'));
   return `<h3>Importar contactos</h3>${top}
   <h4 style="margin:14px 0 2px">Otra opción: archivo de contactos</h4>
@@ -526,8 +528,8 @@ function parseCsv(t){
 
 /* ---------- Acciones ---------- */
 const A={
-  tab:d=>{tab=d.v;more=null;RB=null;QS='';render()},
-  per:d=>{P=d.v;render()},mf:d=>{MF=d.v;render()},ck:d=>{CK=d.v;render()},
+  tab:d=>{tab=d.v;more=null;RB=null;QS='';SEL=null;render()},
+  per:d=>{P=d.v;render()},mf:d=>{MF=d.v;render()},ck:d=>{CK=d.v;QS='';SEL=null;render()},
   goc:d=>{tab='ctos';CK=d.v;render()},
   more:d=>{if(d.v){if(tab!=='mas'){RB=tab;tab='mas'}}else if(RB){tab=RB;RB=null}
     more=d.v||null;if(d.v==='aj'){F=Object.assign({cc:'57',fmt:'a4'},S.biz);F.showName=S.biz.showName?'1':'0'}render()},
@@ -605,6 +607,12 @@ const A={
       .catch(e=>toast('No se pudo abrir los contactos ('+((e&&e.name)||'error')+'). Prueba con el archivo de contactos.'));
   },
   ctd:d=>openM(()=>ctdM(d.id)),
+  selmode:()=>{SEL=SEL?null:new Set();QS='';render()},
+  ctsel:d=>{if(!SEL)return;SEL.has(d.id)?SEL.delete(d.id):SEL.add(d.id);render()},
+  selall:()=>{if(!SEL)return;S.cts.filter(c=>c.kind===CK&&(!QS||(c.name+' '+(c.phone||'')+' '+(c.nit||'')).toLowerCase().includes(QS))).forEach(c=>SEL.add(c.id));render()},
+  selnone:()=>{if(SEL){SEL.clear();render()}},
+  selDel:()=>{if(!SEL||!SEL.size)return;const n=SEL.size,ids=new Set(SEL);
+    ask('¿Borrar '+n+' contacto(s)? No se puede deshacer. Tus ventas y gastos se conservan.',()=>{S.cts=S.cts.filter(c=>!ids.has(c.id));SEL=null;QS='';save();render();toast('Se borraron '+n)})},
   delct:d=>ask('¿Borrar este contacto? Sus movimientos se conservan.',()=>{S.cts=S.cts.filter(c=>c.id!==d.id);save();render()}),
   savebiz:()=>{const b=S.biz;b.name=(F.name||'').trim()||'Mi Negocio';b.cur=(F.cur||'').trim()||'$';
     ['nit','address','phone','email','note'].forEach(k=>{b[k]=(F[k]||'').trim()});

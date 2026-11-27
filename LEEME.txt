@@ -4,6 +4,8 @@ Para actualizar: sube TODOS los archivos de este zip a tu repositorio, reemplaza
 Este zip NO incluye firebase-config.js a proposito: tu repositorio ya tiene el tuyo, no lo toques.
 Tus datos no se pierden. Si el celular muestra la version vieja, cierra y vuelve a abrir la app.
 
+ - Contactos: buscador (por nombre, telefono o NIT) y "Seleccionar varios para borrar" con casillas, "Todos" y "Borrar". Para dejar en cero: Seleccionar -> Todos -> Borrar.
+ - Si la app viene de PWABuilder (APK), el selector de contactos del telefono se desactiva (cerraba la app) y se importa con archivo .vcf/.csv.
  - Contabilidad por caja: una venta a credito NO cuenta como dinero recibido hasta que registres el abono (con su fecha). Inicio y Reportes muestran Recibido, Gastos pagados y Balance; lo pendiente sigue en Por cobrar / Por pagar. Igual para gastos a credito.
  - Recibo: la lista de clientes incluye todos tus contactos y tiene el boton "+ Nuevo cliente".
  - Al abrir un recibo se puede elegir un cliente guardado y se rellenan su nombre y NIT.
